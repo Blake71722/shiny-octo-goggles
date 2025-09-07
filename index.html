@@ -3,42 +3,62 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>My Project Table</title>
+  <title>Games</title>
   <style>
-    :root { --w: min(1000px, 92vw); }
-    body { font-family: system-ui, Arial, sans-serif; margin: 40px 0; display:flex; justify-content:center; }
-    main { width: var(--w); }
-    h1 { text-align:center; margin-bottom: 1rem; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border:1px solid #444; padding:10px; text-align:left; }
-    th { background:#f2f2f2; }
-    tr:nth-child(even) td { background:#fafafa; }
-    caption { text-align:left; margin-bottom:.5rem; font-weight:600; }
+    :root { --maxw: min(1000px, 92vw); }
+    body{font-family:system-ui,Arial,sans-serif;margin:24px;display:flex;justify-content:center}
+    main{width:var(--maxw)}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    header h1{margin:0}
+    #status{margin-left:auto;opacity:.85;font-size:.95rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px}
+    .actions button{margin-right:8px}
+    #stage{display:flex;justify-content:center;align-items:center;margin-top:18px;min-height:420px;border:1px dashed #ccc;border-radius:12px}
     @media (prefers-color-scheme: dark){
       body{background:#111;color:#eee}
-      th,td{border-color:#555}
-      th{background:#1e1e1e}
-      tr:nth-child(even) td{background:#171717}
+      .card{border-color:#333}
+      #stage{border-color:#444}
     }
   </style>
+  <!-- CheerpJ runtime (cached after first load) -->
+  <script defer src="https://cjrtnc.leaningtech.com/3.0/loader.js"></script>
 </head>
 <body>
   <main>
-    <h1>My GitHub Pages Table</h1>
-    <table>
-      <caption>Project tasks</caption>
-      <thead>
-        <tr>
-          <th>Game</th>
-          <th>link</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>Set up repo</td><td>Me</td></tr>
-        <tr><td>Add homepage</td><td>Me</td></tr>
-        <tr><td>Publish via Pages</td><td>Me</td></tr>
-      </tbody>
-    </table>
+    <header>
+      <h1>School Java Games</h1>
+      <div id="status">Ready</div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h3>2048</h3>
+        <p>Arrow keys. Small payload.</p>
+        <div class="actions">
+          <button data-jar="./games/2048/2048.jar" data-w="640" data-h="640">▶ Play</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Tic-Tac-Toe</h3>
+        <p>Two-player / simple AI.</p>
+        <div class="actions">
+          <button data-jar="./games/tictactoe/tictactoe.jar" data-w="480" data-h="480">▶ Play</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Solitaire</h3>
+        <p>Klondike variant.</p>
+        <div class="actions">
+          <button data-jar="./games/solitaire/solitaire.jar" data-w="900" data-h="600">▶ Play</button>
+        </div>
+      </article>
+    </section>
+
+    <div id="stage" aria-live="polite">Click a game’s Play button above to start.</div>
   </main>
-</body>
-</html>
+
+  <script>
+    const stage = document.getElementById('stage');
