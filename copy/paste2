@@ -1,0 +1,3 @@
+& "C:\Program Files\Java\jdk-24\bin\javac.exe" -version
+& "C:\Program Files\Java\jdk-24\bin\java.exe" -version
+& "C:\Program Files\Java\jdk-24\bin\jar.exe" --version
