@@ -1,11 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  </head>
+<head>
   <meta charset="utf-8" />
-  <meta name="viewport"
-    content="width=device-width,inital-scale=1"/>
-    <title>My Project</title>
-    <style>
-      :root { --w: min(1000px, 92vw);}
-      body { font-family: system-ui, Arial, sans-serif; margin: 40px 0; display:flex; justify-content:center; }
-    </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Project Table</title>
+  <style>
+    :root { --w: min(1000px, 92vw); }
+    body { font-family: system-ui, Arial, sans-serif; margin: 40px 0; display:flex; justify-content:center; }
+    main { width: var(--w); }
+    h1 { text-align:center; margin-bottom: 1rem; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border:1px solid #444; padding:10px; text-align:left; }
+    th { background:#f2f2f2; }
+    tr:nth-child(even) td { background:#fafafa; }
+    caption { text-align:left; margin-bottom:.5rem; font-weight:600; }
+    @media (prefers-color-scheme: dark){
+      body{background:#111;color:#eee}
+      th,td{border-color:#555}
+      th{background:#1e1e1e}
+      tr:nth-child(even) td{background:#171717}
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>My GitHub Pages Table</h1>
+    <table>
+      <caption>Project tasks</caption>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Assignee</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Set up repo</td><td>Me</td><td>Done</td></tr>
+        <tr><td>Add homepage</td><td>Me</td><td>In progress</td></tr>
+        <tr><td>Publish via Pages</td><td>Me</td><td>Todo</td></tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
