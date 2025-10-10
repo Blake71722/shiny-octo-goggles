@@ -1,1 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tic-Tac-Toe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #222;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      margin-top: 36px;
+      margin-bottom: 10px;
+      color: #ffd700;
+      letter-spacing: 2px;
+      font-size: 2.2em;
+    }
+    #game-board {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      grid-template-rows: repeat(3, 90px);
+      gap: 10px;
+      margin: 24px 0 8px 0;
+      background: #444;
+      border-radius: 10px;
+      box-shadow: 0 0 18px #000a;
+    }
+    .cell {
+      background: #222;
+      border-radius: 7px;
+      border: 2px solid #ffd700;
+      width: 90px;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.6em;
+      font-weight: bold;
+      color: #ffd700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+      outline: none;
+    }
+    .cell.x { color: #65c3ff; }
+    .cell.o { color: #ff6565; }
+    .cell:active { background: #333; }
+    #game-message {
+      min-height: 32px;
+      font-size: 1.2em;
+      color: #ffd700;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    #restart-btn {
+      padding: 10px 28px;
+      background: #ffd700;
+      color: #222;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px #0005;
+      transition: background 0.2s, color 0.2s;
+    }
+    #restart-btn:hover {
+      background: #fff8dc;
+      color: #b22222;
+    }
+    @media (max-width: 600px) {
+      #game-board {
+        grid-template-columns: repeat(3, 55px);
+        grid-template-rows: repeat(3, 55px);
+        gap: 7px;
+      }
+      .cell {
+        width: 55px;
+        height: 55px;
+        font-size: 1.5em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic-Tac-Toe</h1>
+  <div id="game-message"></div>
+  <div id="game-board"></div>
+  <button id="restart-btn" onclick="startGame()">Restart</button>
+  <script>
+    let board, currentPlayer, gameActive;
 
+    function startGame() {
+      board = Array(9).fill('');
+      currentPlayer = 'X';
+      gameActive = true;
+      document.getElementById('game-message').textContent = "Player X's turn";
+      drawBoard();
+    }
+
+    function drawBoard() {
+      const gameBoard = document.getElementById('game-board');
+      gameBoard.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (board[i] ? ' ' + board[i].toLowerCase() : '');
+        cell.textContent = board[i];
+        cell.tabIndex = 0;
+        cell.onclick = () => handleCellClick(i);
+        cell.onkeydown = (e) => {
+          if (e.key === "Enter" || e.key === " ") handleCellClick(i);
+        };
+        gameBoard.appendChild(cell);
+      }
+    }
+
+    function handleCellClick(idx) {
+      if (!gameActive || board[idx]) return;
+      board[idx] = currentPlayer;
+      drawBoard();
+      if (checkWin(currentPlayer)) {
+        document.getElementById('game-message').textContent = `Player ${currentPlayer} wins!`;
+        gameActive = false;
+      } else if (board.every(cell => cell)) {
+        document.getElementById('game-message').textContent = "It's a draw!";
+        gameActive = false;
+      } else {
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        document.getElementById('game-message').textContent = `Player ${currentPlayer}'s turn`;
+      }
+    }
+
+    function checkWin(player) {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8], // rows
+        [0,3,6],[1,4,7],[2,5,8], // columns
+        [0,4,8],[2,4,6]          // diagonals
+      ];
+      return wins.some(line => line.every(idx => board[idx] === player));
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
