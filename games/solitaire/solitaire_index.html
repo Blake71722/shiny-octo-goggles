@@ -42,19 +42,6 @@
       justify-content: center;
       overflow: visible;
     }
-    .pile .card, .waste .card, .stock .card, .foundation .card {
-      position: absolute;
-      left: 0;
-      right: 0;
-      margin: auto;
-      cursor: pointer;
-      transition: top 0.2s, left 0.2s;
-      z-index: 1;
-    }
-    .pile .card {
-      left: 0; right: 0;
-      margin: auto;
-    }
     .card {
       width: 78px;
       height: 118px;
@@ -70,6 +57,15 @@
       box-shadow: 0 2px 6px #2228;
       padding: 4px;
       user-select: none;
+      position: absolute;
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+      z-index: 1;
+    }
+    .card.selected {
+      box-shadow: 0 0 20px 5px #ffd700, 0 4px 12px #0005;
+      outline: 2px solid #ffd700;
+      z-index: 100;
     }
     .card.red { color: #b22222; }
     .card.back {
@@ -86,15 +82,6 @@
       align-items: center;
       font-size: 2em;
       font-weight: bold;
-    }
-    .foundation {
-      background: #fff8dc;
-    }
-    .waste {
-      background: #228b22;
-    }
-    .stock {
-      background: #228b22;
       cursor: pointer;
     }
     .highlight {
@@ -111,338 +98,22 @@
       background: #ffd700;
       color: #006400;
       cursor: pointer;
+    }
+    #status {
+      text-align: center;
+      font-size: 1.15em;
+      min-height: 24px;
+      color: #ffd700;
+      margin: 6px 0;
       font-weight: bold;
-      box-shadow: 0 2px 8px #0005;
-      transition: background 0.2s, color 0.2s;
-    }
-    #new-game-btn:hover {
-      background: #fff8dc;
-      color: #b22222;
-    }
-    @media (max-width: 900px) {
-      .pile, .foundation, .waste, .stock {
-        width: 48px;
-        height: 72px;
-      }
-      .card {
-        width: 46px;
-        height: 70px;
-        font-size: 0.9em;
-      }
     }
   </style>
 </head>
 <body>
   <h1>Solitaire</h1>
-  <button id="new-game-btn" onclick="startNewGame()">New Game</button>
-  <div id="solitaire-board">
-    <div class="row" id="top-row">
-      <div class="stock" id="stock"></div>
-      <div class="waste" id="waste"></div>
-      <div style="width:48px; height:1px; margin:0 18px;"></div>
-      <div class="foundation" id="foundation-0"></div>
-      <div class="foundation" id="foundation-1"></div>
-      <div class="foundation" id="foundation-2"></div>
-      <div class="foundation" id="foundation-3"></div>
-    </div>
-    <div class="row" id="tableau-row">
-      <div class="pile" id="pile-0"></div>
-      <div class="pile" id="pile-1"></div>
-      <div class="pile" id="pile-2"></div>
-      <div class="pile" id="pile-3"></div>
-      <div class="pile" id="pile-4"></div>
-      <div class="pile" id="pile-5"></div>
-      <div class="pile" id="pile-6"></div>
-    </div>
-  </div>
-  <script>
-    // Suits and values
-    const SUITS = ['♠','♥','♦','♣'];
-    const SUIT_COLORS = ['black','red','red','black'];
-    const VALUES = [ 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K' ];
-    // Card object: { suit: 0-3, value: 0-12, faceUp: true/false }
-    let stock = [], waste = [], foundations = [[],[],[],[]], piles = [[],[],[],[],[],[],[]];
-    let drag = true, dragSource = true, dragOffset = 0;
-
-    function makeDeck() {
-      const deck = [];
-      for (let s=0; s<4; s++) {
-        for (let v=0; v<13; v++) {
-          deck.push({ suit: s, value: v, faceUp: false });
-        }
-      }
-      return deck;
-    }
-
-    function shuffle(deck) {
-      for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
-      }
-    }
-
-    function setupGame() {
-      stock = []; waste = [];
-      foundations = [[],[],[],[]];
-      piles = [[],[],[],[],[],[],[]];
-      let deck = makeDeck();
-      shuffle(deck);
-      // Deal to tableau
-      for (let i=0; i<7; i++) {
-        for (let j=0; j<=i; j++) {
-          const card = deck.pop();
-          card.faceUp = (j === i);
-          piles[i].push(card);
-        }
-      }
-      // Rest go to stock
-      while (deck.length) {
-        let card = deck.pop();
-        card.faceUp = false;
-        stock.push(card);
-      }
-    }
-
-    function cardToHTML(card, idx, parentType, pileIdx) {
-      const div = document.createElement('div');
-      div.className = 'card' + (card.faceUp?'': ' back') + (SUIT_COLORS[card.suit]==='red' ? ' red':'');
-      div.draggable = card.faceUp && (parentType === 'pile' || parentType === 'waste');
-      div.dataset.suit = card.suit;
-      div.dataset.value = card.value;
-      div.dataset.parentType = parentType;
-      div.dataset.pileIdx = pileIdx;
-      div.dataset.cardIdx = idx;
-      if (card.faceUp) {
-        div.innerHTML = `<div>${VALUES[card.value]}</div><div style="align-self:end">${SUITS[card.suit]}</div>`;
-      } else {
-        div.innerHTML = `<div style="margin:0 auto;">🂠</div>`;
-      }
-      if (parentType === 'pile') {
-        div.style.top = `${idx*22}px`;
-        div.style.zIndex = idx + 1;
-      }
-      div.addEventListener('mousedown', (e) => onCardMouseDown(e, card, idx, parentType, pileIdx));
-      div.addEventListener('touchstart', (e) => onCardTouchStart(e, card, idx, parentType, pileIdx), {passive:false});
-      return div;
-    }
-
-    function render() {
-      // Stock
-      const stockDiv = document.getElementById('stock');
-      stockDiv.innerHTML = '';
-      if (stock.length > 0) {
-        let c = stock[stock.length-1];
-        let el = cardToHTML({...c, faceUp:false}, 0, 'stock', -1);
-        stockDiv.appendChild(el);
-        stockDiv.onclick = drawStock;
-      } else {
-        stockDiv.onclick = null;
-      }
-      // Waste
-      const wasteDiv = document.getElementById('waste');
-      wasteDiv.innerHTML = '';
-      if (waste.length > 0) {
-        let c = waste[waste.length-1];
-        let el = cardToHTML({...c, faceUp:true}, waste.length-1, 'waste', -1);
-        wasteDiv.appendChild(el);
-      }
-      // Foundations
-      for (let i=0; i<4; i++) {
-        const fDiv = document.getElementById(`foundation-${i}`);
-        fDiv.innerHTML = '';
-        if (foundations[i].length > 0) {
-          let c = foundations[i][foundations[i].length-1];
-          let el = cardToHTML({...c, faceUp:true}, foundations[i].length-1, 'foundation', i);
-          fDiv.appendChild(el);
-        }
-      }
-      // Piles
-      for (let i=0; i<7; i++) {
-        const pileDiv = document.getElementById(`pile-${i}`);
-        pileDiv.innerHTML = '';
-        for (let j=0; j<piles[i].length; j++) {
-          let c = piles[i][j];
-          let el = cardToHTML(c, j, 'pile', i);
-          el.style.position = 'absolute';
-          el.style.top = `${j*22}px`;
-          pileDiv.appendChild(el);
-        }
-        pileDiv.style.position = 'relative';
-        pileDiv.style.height = `${Math.max(120, (piles[i].length-1)*22 + 120)}px`;
-        pileDiv.ondragover = (e) => e.preventDefault();
-        pileDiv.ondrop = (e) => onDrop(e, 'pile', i);
-        pileDiv.ontouchend = (e) => onDropTouch(e, 'pile', i);
-      }
-      // Foundation drop events
-      for (let i=0; i<4; i++) {
-        let fDiv = document.getElementById(`foundation-${i}`);
-        fDiv.ondragover = (e) => e.preventDefault();
-        fDiv.ondrop = (e) => onDrop(e, 'foundation', i);
-        fDiv.ontouchend = (e) => onDropTouch(e, 'foundation', i);
-      }
-      // Waste drop
-      wasteDiv.ondragover = (e) => e.preventDefault();
-      wasteDiv.ondrop = (e) => onDrop(e, 'waste', -1);
-    }
-
-    function drawStock() {
-      if (stock.length === 0) {
-        // Reset stock from waste
-        while (waste.length) {
-          let c = waste.pop();
-          c.faceUp = false;
-          stock.push(c);
-        }
-      } else {
-        let c = stock.pop();
-        c.faceUp = true;
-        waste.push(c);
-      }
-      render();
-    }
-
-    // Move logic
-    function canMoveToFoundation(card, foundation) {
-      if (foundation.length === 0) return card.value === 0; // Ace
-      let top = foundation[foundation.length-1];
-      return top.suit === card.suit && card.value === top.value+1;
-    }
-    function canMoveToPile(card, pile) {
-      if (pile.length === 0) return card.value === 12; // King
-      let top = pile[pile.length-1];
-      return top.faceUp && SUIT_COLORS[card.suit] !== SUIT_COLORS[top.suit] && card.value === top.value-1;
-    }
-
-    // Drag & drop logic (mouse)
-    function onCardMouseDown(e, card, idx, parentType, pileIdx) {
-      if (parentType === 'pile' && !card.faceUp) return;
-      drag = { card, idx, parentType, pileIdx };
-      dragSource = { x: e.clientX, y: e.clientY };
-      dragOffset = e.clientY - e.target.getBoundingClientRect().top;
-      document.addEventListener('mousemove', onDragMove);
-      document.addEventListener('mouseup', onDragEnd);
-      highlightCards(drag);
-      e.preventDefault();
-    }
-    function onDragMove(e) {
-      let pileDiv = document.getElementById(`pile-${drag.pileIdx}`);
-      for (let i = drag.idx; i < piles[drag.pileIdx].length; i++) {
-        let cardDiv = pileDiv.children[i];
-        cardDiv.style.zIndex = 20 + i;
-        cardDiv.style.left = (e.clientX - pileDiv.getBoundingClientRect().left - 40) + 'px';
-        cardDiv.style.top = (e.clientY - pileDiv.getBoundingClientRect().top - dragOffset + (i-drag.idx)*22) + 'px';
-        cardDiv.classList.add('highlight');
-      }
-    }
-    function onDragEnd(e) {
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', onDragEnd);
-      removeHighlights();
-      // Find drop target
-      let dropTarget = document.elementFromPoint(e.clientX, e.clientY);
-      let dropType = null, dropIdx = -1;
-      if (!dropTarget) { render(); return; }
-      if (dropTarget.classList.contains('pile')) {
-        dropType = 'pile';
-        dropIdx = +dropTarget.id.split('-')[1];
-      } else if (dropTarget.classList.contains('foundation')) {
-        dropType = 'foundation';
-        dropIdx = +dropTarget.id.split('-')[1];
-      }
-      if (dropType) {
-        attemptMove(drag, dropType, dropIdx);
-      }
-      render();
-      drag = null;
-      dragSource = null;
-    }
-    // Touch controls
-    function onCardTouchStart(e, card, idx, parentType, pileIdx) {
-      if (parentType === 'pile' && !card.faceUp) return;
-      drag = { card, idx, parentType, pileIdx };
-      e.target.classList.add('highlight');
-      e.target.ontouchmove = (event)=>{
-        event.preventDefault();
-      };
-    }
-    function onDropTouch(e, toType, toIdx) {
-      if (drag) attemptMove(drag, toType, toIdx);
-      removeHighlights();
-      drag = null;
-      render();
-    }
-    function onDrop(e, toType, toIdx) {
-      e.preventDefault();
-      if (drag) attemptMove(drag, toType, toIdx);
-      removeHighlights();
-      drag = null;
-      render();
-    }
-    function attemptMove(drag, toType, toIdx) {
-      // Source: drag.parentType, drag.pileIdx, drag.idx
-      let movingCards = [];
-      if (drag.parentType === 'pile') {
-        movingCards = piles[drag.pileIdx].slice(drag.idx);
-      } else if (drag.parentType === 'waste') {
-        if (!waste.length) return;
-        movingCards = [waste[waste.length-1]];
-      }
-      if (!movingCards.length) return;
-      // To Foundation
-      if (toType === 'foundation' && movingCards.length === 1) {
-        if (canMoveToFoundation(movingCards[0], foundations[toIdx])) {
-          removeFromSource(drag, movingCards.length);
-          foundations[toIdx].push(movingCards[0]);
-          flipLastOfPile(drag);
-        }
-      }
-      // To Pile
-      else if (toType === 'pile') {
-        if (canMoveToPile(movingCards[0], piles[toIdx])) {
-          removeFromSource(drag, movingCards.length);
-          piles[toIdx] = piles[toIdx].concat(movingCards);
-          flipLastOfPile(drag);
-        }
-      }
-    }
-    function removeFromSource(drag, n) {
-      if (drag.parentType === 'pile') {
-        piles[drag.pileIdx].splice(drag.idx, n);
-      } else if (drag.parentType === 'waste') {
-        waste.pop();
-      }
-    }
-    function flipLastOfPile(drag) {
-      if (drag.parentType === 'pile' && drag.idx > 0 && !piles[drag.pileIdx][drag.idx-1].faceUp) {
-        piles[drag.pileIdx][drag.idx-1].faceUp = true;
-      }
-    }
-    function highlightCards(drag) {
-      if (!drag) return;
-      if (drag.parentType === 'pile') {
-        let pileDiv = document.getElementById(`pile-${drag.pileIdx}`);
-        for (let i = drag.idx; i < piles[drag.pileIdx].length; i++) {
-          pileDiv.children[i].classList.add('highlight');
-        }
-      }
-    }
-    function removeHighlights() {
-      document.querySelectorAll('.highlight').forEach(el=>el.classList.remove('highlight'));
-    }
-    function checkWin() {
-      if (foundations.every(f => f.length === 13)) {
-        setTimeout(() => alert('Congratulations! You win!'), 300);
-      }
-    }
-    function startNewGame() {
-      setupGame();
-      render();
-    }
-    // Initial
-    startNewGame();
-    // Check win on every move
-    const origRender = render;
-    render = function() { origRender.apply(this, arguments); checkWin(); }
-  </script>
+  <button id="new-game-btn">New Game</button>
+  <div id="status"></div>
+  <div id="solitaire-board"></div>
+  <script src="solitaire.js"></script>
 </body>
 </html>
