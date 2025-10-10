@@ -1,51 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<link href="https://fonts.googleapis.com/css?family=Nunito:200,400,800" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2048 Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #faf8ef;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      color: #776e65;
+      margin-top: 50px;
+      margin-bottom: 10px;
+    }
+    .score-box {
+      background: #bbada0;
+      color: #fff;
+      font-weight: bold;
+      padding: 10px 40px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      font-size: 1.2em;
+      letter-spacing: 1px;
+      display: inline-block;
+    }
+    .game-board {
+      background: #bbada0;
+      border-radius: 8px;
+      padding: 15px;
+      display: inline-block;
+      box-shadow: 0px 4px 18px #bba;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      grid-template-rows: repeat(4, 80px);
+      gap: 10px;
+    }
+    .tile {
+      width: 80px;
+      height: 80px;
+      background: #cdc1b4;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+      font-weight: bold;
+      color: #776e65;
+      transition: background 0.2s;
+      user-select: none;
+    }
+    .tile-2    { background: #eee4da; color: #776e65;}
+    .tile-4    { background: #ede0c8; color: #776e65;}
+    .tile-8    { background: #f2b179; color: #f9f6f2;}
+    .tile-16   { background: #f59563; color: #f9f6f2;}
+    .tile-32   { background: #f67c5f; color: #f9f6f2;}
+    .tile-64   { background: #f65e3b; color: #f9f6f2;}
+    .tile-128  { background: #edcf72; color: #f9f6f2;}
+    .tile-256  { background: #edcc61; color: #f9f6f2;}
+    .tile-512  { background: #edc850; color: #f9f6f2;}
+    .tile-1024 { background: #edc53f; color: #f9f6f2;}
+    .tile-2048 { background: #edc22e; color: #f9f6f2;}
+    .btn {
+      background: #8f7a66;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 24px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 20px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #a3896c;
+    }
+    .game-message {
+      margin-top: 20px;
+      color: #8f7a66;
+      font-size: 1.1em;
+      font-weight: bold;
+      min-height: 24px;
+    }
+    @media (max-width: 600px) {
+      .game-board { padding: 7px; }
+      .grid {
+        grid-template-columns: repeat(4, 45px);
+        grid-template-rows: repeat(4, 45px);
+        gap: 6px;
+      }
+      .tile {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2em;
+      }
+    }
+  </style>
 </head>
-
 <body>
-  <div class="game">
-    <div class="head">
-      <div class="a">2048 <button class="info" onClick='info()'>i</button> <button id="repeat" class="info repeat" onClick='reset()'>↻</button></div>
-      <div class="score">Score<br/><span id="value"></span></div>
-    </div>
-    <div class="description" id="description">
-    How to play:<br/><br/>
-    Use your arrow-keys to slide the tiles. <br/>
-    Two tiles with the same value in line can be merged. The goal is to merge the tiles and get the 2048 tile.<br/><br/>
-    The score is a sum of the merged tiles.<br><br/>
-    <span>_______________________________</span><br/><br/>
-    Made by Fabian Richter 01/2017
+  <h1>2048</h1>
+  <div class="score-box">
+    Score: <span id="score">0</span>
   </div>
-    <div class="field">
-      
-      <div class="row">
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-      <div class="row">
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-      <div class="row">
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-      <div class="row">
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-    </div>
-    
+  <div class="game-board">
+    <div class="grid" id="grid"></div>
   </div>
-  <div class='' id='status'>
-  </div>
-  <script src="games/2048/script.js"></script>
+  <button class="btn" onclick="resetGame()">Restart</button>
+  <div class="game-message" id="game-message"></div>
+  <script>
+    const size = 4;
+    let board = [];
+    let score = 0;
+    let gameOver = false;
+
+    function createEmptyBoard() {
+      board = [];
+      for (let i = 0; i < size; i++) {
+        board.push(Array(size).fill(0));
+      }
+    }
+
+    function copyBoard(b) {
+      return b.map(row => row.slice());
+    }
+
+    function addRandomTile() {
+      const empty = [];
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          if (board[i][j] === 0) empty.push([i, j]);
+        }
+      }
+      if (empty.length === 0) return;
+      const [i, j] = empty[Math.floor(Math.random() * empty.length)];
+      board[i][j] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function drawBoard() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const val = board[i][j];
+          const div = document.createElement('div');
+          div.className = 'tile' + (val ? ` tile-${val}` : '');
+          div.textContent = val === 0 ? '' : val;
+          grid.appendChild(div);
+        }
+      }
+      document.getElementById('score').textContent = score;
+    }
+
+    function slide(row) {
+      let arr = row.filter(val => val);
+      for (let i = 0; i < arr.length-1; i++) {
+        if (arr[i] === arr[i+1]) {
+          arr[i] *= 2;
+          score += arr[i];
+          arr[i+1] = 0;
+        }
+      }
+      arr = arr.filter(val => val);
+      while (arr.length < size) arr.push(0);
+      return arr;
+    }
+
+    function rotateLeft(mat) {
+      let res = createEmptyMatrix();
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size; j++)
+          res[size-j-1][i] = mat[i][j];
+      return res;
+    }
+    function rotateRight(mat) {
+      let res = createEmptyMatrix();
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size; j++)
+          res[j][size-i-1] = mat[i][j];
+      return res;
+    }
+    function createEmptyMatrix() {
+      return Array(size).fill().map(()=>Array(size).fill(0));
+    }
+    function move(direction) {
+      if (gameOver) return false;
+      let oldBoard = copyBoard(board);
+      switch(direction) {
+        case 'left':
+          for (let i = 0; i < size; i++)
+            board[i] = slide(board[i]);
+          break;
+        case 'right':
+          for (let i = 0; i < size; i++)
+            board[i] = slide(board[i].slice().reverse()).reverse();
+          break;
+        case 'up':
+          board = rotateLeft(board);
+          for (let i = 0; i < size; i++)
+            board[i] = slide(board[i]);
+          board = rotateRight(board);
+          break;
+        case 'down':
+          board = rotateLeft(board);
+          for (let i = 0; i < size; i++)
+            board[i] = slide(board[i].slice().reverse()).reverse();
+          board = rotateRight(board);
+          break;
+      }
+      if (JSON.stringify(board) !== JSON.stringify(oldBoard)) {
+        addRandomTile();
+        drawBoard();
+        if (checkWin()) {
+          showMessage('You win! 🎉');
+          gameOver = true;
+        } else if (isGameOver()) {
+          showMessage('Game over!');
+          gameOver = true;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    function checkWin() {
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size; j++)
+          if (board[i][j] === 2048)
+            return true;
+      return false;
+    }
+
+    function isGameOver() {
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size; j++)
+          if (board[i][j] === 0) return false;
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size-1; j++)
+          if (board[i][j] === board[i][j+1]) return false;
+      for (let j = 0; j < size; j++)
+        for (let i = 0; i < size-1; i++)
+          if (board[i][j] === board[i+1][j]) return false;
+      return true;
+    }
+
+    function showMessage(msg) {
+      document.getElementById('game-message').textContent = msg;
+    }
+
+    function resetGame() {
+      score = 0;
+      gameOver = false;
+      showMessage('');
+      createEmptyBoard();
+      addRandomTile();
+      addRandomTile();
+      drawBoard();
+    }
+
+    window.resetGame = resetGame;
+
+    document.addEventListener('keydown', function(e) {
+      let moved = false;
+      switch(e.key) {
+        case 'ArrowLeft': moved = move('left'); break;
+        case 'ArrowRight': moved = move('right'); break;
+        case 'ArrowUp': moved = move('up'); break;
+        case 'ArrowDown': moved = move('down'); break;
+      }
+      if (moved) e.preventDefault();
+    });
+
+    // Touch support for mobile
+    let touchStartX, touchStartY;
+    document.addEventListener('touchstart', function(e) {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+    document.addEventListener('touchend', function(e) {
+      if (typeof touchStartX === 'undefined' || typeof touchStartY === 'undefined') return;
+      let dx = e.changedTouches[0].clientX - touchStartX;
+      let dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 25) move('right');
+        else if (dx < -25) move('left');
+      } else {
+        if (dy > 25) move('down');
+        else if (dy < -25) move('up');
+      }
+      touchStartX = undefined;
+      touchStartY = undefined;
+    });
+
+    // Init
+    resetGame();
+  </script>
 </body>
+</html>
