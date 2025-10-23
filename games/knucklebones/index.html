@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Knucklebones — Cult of the Lamb (single file)</title>
+  <meta name="description" content="Single-file Knucklebones-like game (player vs AI). Touch-friendly for Chromebooks." />
+  <style>
+    :root{
+      --bg:#0f0f12;
+      --panel:#16161a;
+      --accent:#c87cff;
+      --muted:#9aa0a6;
+      --text:#ececec;
+      --card:#1b1b1f;
+      --gap:12px;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:linear-gradient(180deg,#07060a 0%, #0f0f12 100%)}
+    .wrap{max-width:980px;margin:18px auto;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+    header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    h1{margin:0;font-size:20px}
+    .subtitle{margin:0;color:var(--muted);font-size:13px}
+    #game{margin-top:14px}
+    #hud{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .controls{display:flex;gap:8px}
+    button{background:var(--panel);border:0;color:var(--text);padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;min-height:44px;box-shadow:0 4px 8px rgba(0,0,0,0.35)}
+    button:active{transform:translateY(1px)}
+    button[disabled]{opacity:.45;cursor:default;transform:none}
+    .boards{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+    .board{flex:1;min-width:260px;background:var(--card);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .board h2{margin:0 0 8px 0;font-size:14px}
+    .columns{display:flex;gap:8px;align-items:flex-end;min-height:160px;padding:8px 0}
+    .column{width:48px;background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.06));border-radius:8px;padding:8px;display:flex;flex-direction:column-reverse;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.02);touch-action:manipulation}
+    .column.full{opacity:.45}
+    .slot{width:36px;height:30px;border-radius:6px;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:var(--text);font-weight:800;font-size:16px;box-shadow:inset 0 -3px 6px rgba(0,0,0,0.35)}
+    .column:active{transform:translateY(1px)}
+    .score{margin-top:10px;color:var(--muted);font-weight:700;font-size:13px}
+    #diceArea{margin-top:12px}
+    .diceRow{display:flex;gap:8px;flex-wrap:wrap}
+    .die{width:64px;height:64px;border-radius:12px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:var(--text);cursor:pointer;border:2px solid transparent;touch-action:manipulation}
+    .die.selected{outline:3px solid rgba(200,124,255,0.18);transform:translateY(-4px)}
+    #log{margin-top:10px;color:var(--muted);font-size:13px;min-height:22px}
+    footer{margin-top:14px;color:var(--muted);font-size:12px;text-align:center}
+    @media (max-width:640px){
+      .columns{min-height:120px}
+      .die{width:56px;height:56px;font-size:20px}
+      .slot{width:30px;height:26px;font-size:14px}
+      .column{width:42px}
+      button{padding:10px 12px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <header>
+      <div>
+        <h1>Knucklebones — Cult of the Lamb (single file)</h1>
+        <p class="subtitle">Touch-friendly, single HTML file designed to run on Chromebooks. Roll, tap a die, tap a column to place.</p>
+      </div>
+    </header>
+
+    <div id="game">
+      <div id="hud">
+        <div id="status">Ready. Press "Roll Dice" to begin.</div>
+        <div class="controls">
+          <button id="rollBtn">Roll Dice</button>
+          <button id="endTurnBtn" disabled>End Turn</button>
+          <button id="resetBtn">Reset</button>
+          <button id="exportBtn">Save as HTML</button>
+        </div>
+      </div>
+
+      <div class="boards">
+        <div class="board" id="playerBoard">
+          <h2>You</h2>
+          <div class="columns" id="playerColumns" aria-label="Player columns"></div>
+          <div class="score">Score: <span id="playerScore">0</span></div>
+        </div>
+
+        <div class="board" id="aiBoard">
+          <h2>Oppressor (AI)</h2>
+          <div class="columns" id="aiColumns" aria-label="AI columns"></div>
+          <div class="score">Score: <span id="aiScore">0</span></div>
+        </div>
+      </div>
+
+      <div id="diceArea">
+        <h3 style="margin:8px 0 6px 0;color:var(--muted);font-weight:700">Dice (tap a die, then tap a column to place)</h3>
+        <div id="dice" class="diceRow" role="list"></div>
+      </div>
+
+      <div id="log" aria-live="polite"></div>
+    </div>
+
+    <footer>
+      <small>Single-file build — drop this on your Chromebook and open in Chrome. No internet needed.</small>
+    </footer>
+  </div>
+
+  <script>
+    (function(){
+      // Configuration
+      const COLUMNS = 6;
+      const MAX_HEIGHT = 6;
+      const ROLL_COUNT = 3;
+
+      // DOM
+      const rollBtn = document.getElementById('rollBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const endTurnBtn = document.getElementById('endTurnBtn');
+      const exportBtn = document.getElementById('exportBtn');
+      const diceEl = document.getElementById('dice');
+      const playerColumnsEl = document.getElementById('playerColumns');
+      const aiColumnsEl = document.getElementById('aiColumns');
+      const statusEl = document.getElementById('status');
+      const logEl = document.getElementById('log');
+      const playerScoreEl = document.getElementById('playerScore');
+      const aiScoreEl = document.getElementById('aiScore');
+
+      // State
+      let player = { columns: Array.from({length:COLUMNS},()=>[]) };
+      let ai = { columns: Array.from({length:COLUMNS},()=>[]) };
+      let currentDice = [];
+      let selectedDieIndex = null;
+      let playerHasRolled = false;
+
+      // Utils
+      function rollDice(n){ return Array.from({length:n},()=>Math.floor(Math.random()*6)+1); }
+
+      function calcColumnScore(col){
+        const counts = {};
+        for(const v of col) counts[v] = (counts[v]||0)+1;
+        let s = 0;
+        for(const f in counts){
+          const c = counts[f];
+          s += Number(f) * c * c;
+        }
+        return s;
+      }
+
+      function calcTotalScore(side){
+        return side.columns.reduce((sum,col)=>sum+calcColumnScore(col),0);
+      }
+
+      // Rendering
+      function renderColumns(container, sideObj, clickHandler){
+        container.innerHTML = '';
+        for(let i=0;i<COLUMNS;i++){
+          const col = document.createElement('div');
+          col.className = 'column' + (sideObj.columns[i].length >= MAX_HEIGHT ? ' full' : '');
+          col.dataset.index = i;
+          col.setAttribute('role','button');
+          col.setAttribute('aria-label', 'Column ' + (i+1) + ' has ' + sideObj.columns[i].length + ' dice');
+          if(clickHandler){
+            col.addEventListener('click', ()=>clickHandler(i));
+            col.addEventListener('touchstart', (e)=>{ e.preventDefault(); }, {passive:false});
+          }
+          for(let s=0;s<MAX_HEIGHT;s++){
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            const value = sideObj.columns[i][s];
+            slot.textContent = value ? value : '';
+            col.appendChild(slot);
+          }
+          container.appendChild(col);
+        }
+      }
+
+      function renderDice(){
+        diceEl.innerHTML = '';
+        currentDice.forEach((d,i)=>{
+          const die = document.createElement('div');
+          die.className = 'die' + (i === selectedDieIndex ? ' selected' : '');
+          die.textContent = d;
+          die.setAttribute('role','button');
+          die.setAttribute('aria-label','Die ' + (i+1) + ' value ' + d);
+          die.addEventListener('click', ()=> {
+            if(!playerHasRolled) return;
+            selectedDieIndex = i;
+            updateUI();
+          });
+          die.addEventListener('touchstart', (e)=>{ e.preventDefault(); selectedDieIndex = i; updateUI(); }, {passive:false});
+          diceEl.appendChild(die);
+        });
+      }
+
+      function log(msg){
+        statusEl.textContent = msg;
+        logEl.textContent = msg;
+      }
+
+      function updateUI(){
+        renderColumns(playerColumnsEl, player, onPlayerPlace);
+        renderColumns(aiColumnsEl, ai, null);
+        renderDice();
+        playerScoreEl.textContent = calcTotalScore(player);
+        aiScoreEl.textContent = calcTotalScore(ai);
+        endTurnBtn.disabled = !playerHasRolled || currentDice.length > 0;
+      }
+
+      function canPlaceInColumn(sideObj, colIndex){
+        return sideObj.columns[colIndex].length < MAX_HEIGHT;
+      }
+
+      // Player interaction
+      function onPlayerPlace(colIndex){
+        if(!playerHasRolled){ log('Roll first.'); return; }
+        if(selectedDieIndex === null){ log('Select a die first.'); return; }
+        if(!canPlaceInColumn(player, colIndex)){ log('That column is full.'); return; }
+        const dieValue = currentDice[selectedDieIndex];
+        player.columns[colIndex].push(dieValue);
+        currentDice.splice(selectedDieIndex,1);
+        selectedDieIndex = null;
+        updateUI();
+        if(currentDice.length === 0){
+          log('You placed all dice. Press End Turn for AI to move.');
+          endTurnBtn.disabled = false;
+        } else {
+          log('Placed die. Place the remaining dice.');
+        }
+      }
+
+      // Buttons
+      rollBtn.addEventListener('click', ()=>{
+        if(playerHasRolled && currentDice.length>0){ log('Place remaining dice before rolling again.'); return; }
+        currentDice = rollDice(ROLL_COUNT);
+        playerHasRolled = true;
+        selectedDieIndex = null;
+        log(`You rolled: ${currentDice.join(', ')}`);
+        updateUI();
+      });
+
+      endTurnBtn.addEventListener('click', ()=>{
+        if(!playerHasRolled){ log('You must roll before ending your turn.'); return; }
+        // auto-place remaining dice for player (first available columns)
+        while(currentDice.length>0){
+          let placed=false;
+          for(let c=0;c<COLUMNS;c++){
+            if(canPlaceInColumn(player,c)){
+              player.columns[c].push(currentDice.shift());
+              placed=true; break;
+            }
+          }
+          if(!placed) break;
+        }
+        selectedDieIndex = null;
+        currentDice = [];
+        updateUI();
+        log('Player turn ended. AI is thinking...');
+        playerHasRolled = false;
+        endTurnBtn.disabled = true;
+        setTimeout(()=>aiTurn(), 350);
+      });
+
+      resetBtn.addEventListener('click', ()=>{
+        player = { columns: Array.from({length:COLUMNS},()=>[]) };
+        ai = { columns: Array.from({length:COLUMNS},()=>[]) };
+        currentDice = [];
+        selectedDieIndex = null;
+        playerHasRolled = false;
+        log('Game reset. Press Roll Dice to begin.');
+        updateUI();
+      });
+
+      // Export single-file HTML for offline saving
+      exportBtn.addEventListener('click', ()=>{
+        const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'knucklebones.html';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      // AI logic (greedy immediate value)
+      function aiTurn(){
+        const dice = rollDice(ROLL_COUNT);
+        log(`AI rolled: ${dice.join(', ')}`);
+        for(const d of dice){
+          let bestCol = null;
+          let bestScore = -Infinity;
+          for(let c=0;c<COLUMNS;c++){
+            if(!canPlaceInColumn(ai,c)) continue;
+            ai.columns[c].push(d);
+            const score = calcTotalScore(ai);
+            ai.columns[c].pop();
+            if(score > bestScore){
+              bestScore = score; bestCol = c;
+            }
+          }
+          if(bestCol === null){
+            // fallback: place to block player's shallowest column if possible
+            let target = 0, min = Infinity;
+            for(let c=0;c<COLUMNS;c++){
+              if(player.columns[c].length < min){ min = player.columns[c].length; target = c; }
+            }
+            if(canPlaceInColumn(ai,target)) ai.columns[target].push(d);
+          } else {
+            ai.columns[bestCol].push(d);
+          }
+        }
+        updateUI();
+        const pS = calcTotalScore(player);
+        const aS = calcTotalScore(ai);
+        log(`AI placed dice. Scores -> You: ${pS} | AI: ${aS}`);
+        // Small check for full board -> declare winner in status
+        if(isBoardFull()){
+          declareWinner();
+        }
+      }
+
+      function isBoardFull(){
+        return player.columns.every(c=>c.length>=MAX_HEIGHT) && ai.columns.every(c=>c.length>=MAX_HEIGHT);
+      }
+
+      function declareWinner(){
+        const p = calcTotalScore(player), q = calcTotalScore(ai);
+        if(p>q) log('Victory! You bested the Oppressor.');
+        else if(q>p) log('Defeat. The Oppressor prevails.');
+        else log('Draw. The ritual is even.');
+      }
+
+      // Keyboard shortcuts for Chromebook keyboards (optional)
+      window.addEventListener('keydown', (e)=>{
+        if(e.key === 'r' || e.key === 'R') rollBtn.click();
+        if(e.key === 'e' || e.key === 'E') endTurnBtn.click();
+        if(e.key === 'n' || e.key === 'N') resetBtn.click();
+      });
+
+      // Initial render
+      updateUI();
+      log('Ready. Press "Roll Dice" to begin.');
+
+    })();
+  </script>
+</body>
+</html>
